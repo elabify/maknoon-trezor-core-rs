@@ -1,0 +1,54 @@
+[workspace]
+resolver = "2"
+members = ["trezor-core"]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.81"
+license = "Apache-2.0"
+repository = "https://github.com/elabify/maknoon-trezor-core-rs"
+authors = ["Benjamin Chodroff"]
+
+[workspace.dependencies]
+uniffi = { version = "0.31", default-features = false }
+async-trait = "0.1"
+base64 = "0.22"
+thiserror = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hex = "0.4"
+tokio = { version = "1", default-features = false }
+
+# Protobuf: prost runtime for the generated trezor-common bindings,
+# plus protox (pure Rust) + prost-build for build.rs codegen. protox
+# avoids a `protoc` system dependency, so the build stays reproducible
+# and auditor-verifiable like the ledger crates' pinned toolchain.
+prost = "0.13"
+prost-build = "0.13"
+protox = "0.7"
+
+# rust-bitcoin: PSBT parse + signature merge for the Bitcoin SignTx
+# driver. Trezor firmware never consumes a PSBT (it speaks the SignTx
+# TxRequest/TxAck stream), so the host owns PSBT<->SignTx translation;
+# we use the standard crate for that, same major version the ledger
+# crates already cross-compile (secp256k1) for iOS.
+bitcoin = { version = "0.32", default-features = false, features = ["std", "base64"] }
+
+# THP v2 secure-channel stack. SPEC-CONFIRMED cipher is AES-256-GCM
+# (Noise_XX_25519_AESGCM_SHA256), NOT ChaCha20Poly1305, and the
+# handshake is hand-rolled per spec (masked static key + non-standard
+# transcript hashing rule out `snow`).
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+aes-gcm = "0.10"
+sha2 = "0.10"
+hmac = "0.12"
+getrandom = "0.2"
+
+[profile.release]
+# Bank pen-testers will inspect symbols. Keep them readable; the
+# size cost is acceptable for a hardware-wallet signing library
+# that's ~hundreds of KB anyway. Matches ledger-*-rs.
+strip = false
+lto = "thin"
+opt-level = 3
+codegen-units = 1

@@ -1,0 +1,67 @@
+name: Bug report
+description: Report a problem with this crate
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. For **security vulnerabilities**, use the security policy
+        (private reporting), not a public issue.
+  - type: checkboxes
+    id: prechecks
+    attributes:
+      label: Before you start
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: This is not a security vulnerability (those go through SECURITY.md, privately).
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Crate version / commit
+      description: The version in Cargo.toml or the git commit you built from.
+      placeholder: "0.1.0 or <git sha>"
+    validations:
+      required: true
+  - type: input
+    id: rust
+    attributes:
+      label: Rust toolchain
+      description: Output of `rustc --version`.
+      placeholder: "rustc 1.81.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: target
+    attributes:
+      label: Target / platform
+      options:
+        - macOS (host)
+        - Linux (host)
+        - iOS (aarch64-apple-ios / simulator)
+        - Android (via cargo-ndk)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: A minimal code snippet or command sequence is ideal. Use code fences.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: Include error output or a backtrace (run with `RUST_BACKTRACE=1`).
+    validations:
+      required: true

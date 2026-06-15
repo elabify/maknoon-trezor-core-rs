@@ -1,0 +1,10 @@
+# Force contributors through the structured templates above; route security
+# privately and app-level issues to the app repo. elabify/maknoon-trezor-core-rs is substituted per repo.
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/elabify/maknoon-trezor-core-rs/security/policy
+    about: Report security issues privately. Please do not open a public issue.
+  - name: Maknoon iOS app
+    url: https://github.com/elabify/maknoon-ios
+    about: This library is consumed by the Maknoon wallet; app-level issues belong there.

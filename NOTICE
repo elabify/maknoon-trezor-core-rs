@@ -1,0 +1,11 @@
+# NOTICE: third-party attributions
+
+This crate (Apache-2.0; see LICENSE) pins its full dependency tree in
+`Cargo.lock`. All dependencies are under permissive licenses
+(Apache-2.0 / MIT / MPL-2.0 / BSD / CC0-1.0). Notable third parties:
+
+- **uniffi** (Mozilla), MPL-2.0: cross-language binding generator
+- **ledger\_* / *\_client_rs** (LedgerHQ), Apache-2.0: official Ledger device clients
+- plus tokio, serde, thiserror, hex, bs58, sha2/sha3 (MIT / Apache-2.0)
+
+Run `cargo license` for the exhaustive, version-exact list.

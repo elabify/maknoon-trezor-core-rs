@@ -1,0 +1,32 @@
+## Rust
+/target/
+**/target/
+*.pdb
+
+## UniFFI generated bindings (regenerated from source)
+/ios/bindings/
+/android/library/src/main/java/uniffi/
+/android/library/src/main/jniLibs/
+
+## Build outputs
+/ios/TrezorCore.xcframework/
+/android/build/
+/android/.gradle/
+/android/library/build/
+
+## macOS
+.DS_Store
+
+## IDE
+.idea/
+.vscode/
+*.swp
+
+## Local development
+.env
+*.local
+
+## Captured conformance fixtures may contain real device data
+## (device id, xpubs) and must not be committed. Capture locally;
+## the conformance harness picks them up automatically.
+/trezor-core/tests/fixtures/*.json

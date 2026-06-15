@@ -1,0 +1,6 @@
+# Use the system's current stable. Pre-release we'll pin to an
+# exact patch version (e.g. "1.95.0") for reproducible builds and
+# auditor verification. Matches ledger-*-rs.
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
