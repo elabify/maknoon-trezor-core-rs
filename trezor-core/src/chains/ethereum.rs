@@ -122,6 +122,42 @@ pub(crate) async fn sign_message(
     Ok(sig[..64].to_vec())
 }
 
+/// EIP-191 message signature, returned as the FULL 65-byte `R || S || V`.
+/// Unlike `sign_message` (which drops the recovery byte for the identity
+/// sandwich's R||S wire format), this keeps `V` so a user-facing
+/// `personal_sign` can be verified by ecrecover off-device.
+pub(crate) async fn sign_message_full(
+    conn: &mut Connection,
+    session_id: u8,
+    path: &[u32],
+    message: &[u8],
+) -> Result<Vec<u8>, TrezorError> {
+    let (rt, rp) = conn
+        .transceive_on(
+            session_id,
+            ETH_SIGN_MESSAGE,
+            &EthereumSignMessage {
+                address_n: path.to_vec(),
+                message: message.to_vec(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+        )
+        .await?;
+    if rt != ETH_MESSAGE_SIGNATURE {
+        return Err(TrezorError::thp(format!(
+            "expected EthereumMessageSignature ({ETH_MESSAGE_SIGNATURE}), got message type {rt}"
+        )));
+    }
+    let sig = EthereumMessageSignature::decode(rp.as_slice())
+        .map_err(|e| TrezorError::thp(format!("EthereumMessageSignature decode: {e}")))?
+        .signature;
+    if sig.len() < 65 {
+        return Err(TrezorError::thp("Ethereum signature shorter than 65 bytes"));
+    }
+    Ok(sig[..65].to_vec())
+}
+
 /// Sign an EIP-1559 (type-2) transaction at `path` on a seeded
 /// session. `envelope` is the host-built `0x02 || rlp([...])` unsigned
 /// blob (identical to what the ledger path hands its device); we decode

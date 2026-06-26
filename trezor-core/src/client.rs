@@ -496,6 +496,42 @@ impl TrezorClient {
         r
     }
 
+    /// Sign an arbitrary message with the Bitcoin key at `address_n` (a full
+    /// BIP32 path, e.g. m/84'/0'/0'/0/0). Returns the address the device
+    /// signed for plus the 65-byte Electrum "Bitcoin Signed Message"
+    /// signature. The user confirms the message on-device.
+    pub async fn sign_bitcoin_message(
+        &self,
+        host_static_priv: Vec<u8>,
+        credential: Vec<u8>,
+        passphrase: PassphraseSpec,
+        address_n: Vec<u32>,
+        message: Vec<u8>,
+        coin_type: u32,
+    ) -> Result<chains::bitcoin::BitcoinMessageSignature, TrezorError> {
+        let mut guard = self.pinned.lock().await;
+        let conn = match ensure_conn(
+            &mut guard,
+            &self.transport,
+            &host_static_priv,
+            credential,
+            &passphrase,
+        )
+        .await
+        {
+            Ok(c) => c,
+            Err(e) => {
+                *guard = None;
+                return Err(e);
+            }
+        };
+        let r = chains::bitcoin::sign_message(conn, SEEDED_SESSION_ID, &address_n, &message, coin_type).await;
+        if r.is_err() {
+            *guard = None;
+        }
+        r
+    }
+
     // ---- Ethereum ----
 
     /// EIP-55 checksummed `0x...` address for BIP44 account
@@ -572,6 +608,45 @@ impl TrezorClient {
         r
     }
 
+    /// EIP-191 `personal_sign` for the user's Ethereum account
+    /// (m/44'/60'/<account>'/0/0, or a custom `path`). Returns the full
+    /// 65-byte R||S||V signature so a verifier can ecrecover off-device.
+    /// `passphrase` selects the standard or a hidden wallet; the user
+    /// confirms the message on-device.
+    pub async fn sign_ethereum_message(
+        &self,
+        host_static_priv: Vec<u8>,
+        credential: Vec<u8>,
+        passphrase: PassphraseSpec,
+        account: u32,
+        message: Vec<u8>,
+        path: Option<String>,
+    ) -> Result<Vec<u8>, TrezorError> {
+        let address_n = resolve_path(path, chains::ethereum::account_path(account))?;
+        let mut guard = self.pinned.lock().await;
+        let conn = match ensure_conn(
+            &mut guard,
+            &self.transport,
+            &host_static_priv,
+            credential,
+            &passphrase,
+        )
+        .await
+        {
+            Ok(c) => c,
+            Err(e) => {
+                *guard = None;
+                return Err(e);
+            }
+        };
+        let r =
+            chains::ethereum::sign_message_full(conn, SEEDED_SESSION_ID, &address_n, &message).await;
+        if r.is_err() {
+            *guard = None;
+        }
+        r
+    }
+
     // ---- Solana ----
 
     /// Base58 ed25519 address for SLIP-0010 account
@@ -638,6 +713,46 @@ impl TrezorClient {
             }
         };
         let r = chains::solana::sign_tx(conn, SEEDED_SESSION_ID, &address_n, &unsigned_tx).await;
+        if r.is_err() {
+            *guard = None;
+        }
+        r
+    }
+
+    /// Sign a Solana off-chain message (OCMS) for BIP44 account
+    /// m/44'/501'/<account>'/0'. `envelope` is the full serialized
+    /// off-chain-message built host-side by ledger-sol-core's
+    /// `sol_offchain_envelope` (with this account's pubkey in the signers
+    /// list). Returns the 64-byte ed25519 signature. `passphrase` selects the
+    /// standard or a hidden wallet.
+    pub async fn sign_solana_message(
+        &self,
+        host_static_priv: Vec<u8>,
+        credential: Vec<u8>,
+        passphrase: PassphraseSpec,
+        envelope: Vec<u8>,
+        account: u32,
+        path: Option<String>,
+    ) -> Result<Vec<u8>, TrezorError> {
+        let address_n = resolve_path(path, chains::solana::account_path(account))?;
+        let mut guard = self.pinned.lock().await;
+        let conn = match ensure_conn(
+            &mut guard,
+            &self.transport,
+            &host_static_priv,
+            credential,
+            &passphrase,
+        )
+        .await
+        {
+            Ok(c) => c,
+            Err(e) => {
+                *guard = None;
+                return Err(e);
+            }
+        };
+        let r =
+            chains::solana::sign_message(conn, SEEDED_SESSION_ID, &address_n, &envelope).await;
         if r.is_err() {
             *guard = None;
         }

@@ -8,7 +8,8 @@ use prost::Message as _;
 
 use crate::error::TrezorError;
 use crate::proto::hw::trezor::messages::solana::{
-    SolanaAddress, SolanaGetAddress, SolanaSignTx, SolanaTxSignature,
+    SolanaAddress, SolanaGetAddress, SolanaMessageSignature, SolanaSignMessage, SolanaSignTx,
+    SolanaTxSignature,
 };
 use crate::thp::connection::Connection;
 
@@ -16,6 +17,8 @@ const SOL_GET_ADDRESS: u16 = 902;
 const SOL_ADDRESS: u16 = 903;
 const SOL_SIGN_TX: u16 = 904;
 const SOL_TX_SIGNATURE: u16 = 905;
+const SOL_SIGN_MESSAGE: u16 = 906;
+const SOL_MESSAGE_SIGNATURE: u16 = 907;
 
 /// SLIP-0010 path m/44'/501'/account'/0' (all hardened).
 pub(crate) fn account_path(account: u32) -> Vec<u32> {
@@ -84,6 +87,44 @@ pub(crate) async fn sign_tx(
     if sig.len() != 64 {
         return Err(TrezorError::thp(format!(
             "Solana signature was {} bytes, expected 64",
+            sig.len()
+        )));
+    }
+    Ok(sig)
+}
+
+/// Sign a Solana off-chain message (OCMS) at `path`, returning the 64-byte
+/// ed25519 signature. `message` is the FULL serialized off-chain-message
+/// envelope (signing domain + version + application domain + format + signers +
+/// length + message), built host-side by `ledger-sol-core`'s
+/// `sol_offchain_envelope`. The device parses it, checks the derived pubkey is
+/// in the signers list, and signs the bytes raw, so the signature is identical
+/// to the software + Ledger paths.
+pub(crate) async fn sign_message(
+    conn: &mut Connection,
+    session_id: u8,
+    path: &[u32],
+    message: &[u8],
+) -> Result<Vec<u8>, TrezorError> {
+    let msg = SolanaSignMessage {
+        address_n: path.to_vec(),
+        message: message.to_vec(),
+        chunkify: None,
+    };
+    let (rt, rp) = conn
+        .transceive_on(session_id, SOL_SIGN_MESSAGE, &msg.encode_to_vec())
+        .await?;
+    if rt != SOL_MESSAGE_SIGNATURE {
+        return Err(TrezorError::thp(format!(
+            "expected SolanaMessageSignature ({SOL_MESSAGE_SIGNATURE}), got message type {rt}"
+        )));
+    }
+    let sig = SolanaMessageSignature::decode(rp.as_slice())
+        .map_err(|e| TrezorError::thp(format!("SolanaMessageSignature decode: {e}")))?
+        .signature;
+    if sig.len() != 64 {
+        return Err(TrezorError::thp(format!(
+            "Solana message signature was {} bytes, expected 64",
             sig.len()
         )));
     }

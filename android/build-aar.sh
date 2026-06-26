@@ -74,7 +74,13 @@ echo "[android] building all targets via cargo-ndk"
 # 16 KB page-size alignment (Google Play requirement for Android 15+). NDK r27+
 # defaults to this; pin it explicitly so a build on an older NDK still emits
 # 16 KB-aligned .so (verify with llvm-readelf -l: LOAD align must be 0x4000).
-export RUSTFLAGS="${RUSTFLAGS:-} -C link-arg=-Wl,-z,max-page-size=16384 -C link-arg=-Wl,-z,common-page-size=16384"
+# Scope to the Android targets only: a global RUSTFLAGS also reaches HOST
+# build-script compilation, where macOS ld rejects -z ("ld: unknown options").
+_PAGE16="-C link-arg=-Wl,-z,max-page-size=16384 -C link-arg=-Wl,-z,common-page-size=16384"
+export CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS="${CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS:-} $_PAGE16"
+export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_RUSTFLAGS="${CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_RUSTFLAGS:-} $_PAGE16"
+export CARGO_TARGET_X86_64_LINUX_ANDROID_RUSTFLAGS="${CARGO_TARGET_X86_64_LINUX_ANDROID_RUSTFLAGS:-} $_PAGE16"
+export CARGO_TARGET_I686_LINUX_ANDROID_RUSTFLAGS="${CARGO_TARGET_I686_LINUX_ANDROID_RUSTFLAGS:-} $_PAGE16"
 "$CARGO" ndk \
     --target arm64-v8a \
     --target x86_64 \

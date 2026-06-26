@@ -27,7 +27,7 @@ use crate::error::TrezorError;
 use crate::proto::hw::trezor::messages::bitcoin as btc;
 use crate::proto::hw::trezor::messages::bitcoin::tx_request::RequestType;
 use crate::proto::hw::trezor::messages::bitcoin::{
-    GetPublicKey, InputScriptType, OutputScriptType, PublicKey,
+    GetPublicKey, InputScriptType, MessageSignature, OutputScriptType, PublicKey, SignMessage,
 };
 use crate::thp::connection::Connection;
 
@@ -37,6 +37,8 @@ const BTC_SIGN_TX: u16 = 15;
 const BTC_TX_REQUEST: u16 = 21;
 // TxAckInput / TxAckOutput are wire-aliased to TxAck (message type 22).
 const BTC_TX_ACK: u16 = 22;
+const BTC_SIGN_MESSAGE: u16 = 38;
+const BTC_MESSAGE_SIGNATURE: u16 = 40;
 
 /// BIP84 account path m/84'/coin'/account' (all hardened).
 pub(crate) fn account_path(account: u32, coin_type: u32) -> Vec<u32> {
@@ -67,6 +69,55 @@ fn script_type_for_path(address_n: &[u32]) -> InputScriptType {
         Some(49) => InputScriptType::Spendp2shwitness,
         _ => InputScriptType::Spendwitness,
     }
+}
+
+/// Result of a Bitcoin message signature: the address the device signed
+/// for and the 65-byte Electrum "Bitcoin Signed Message" signature
+/// (header || r || s; the device sets the address-type header byte).
+#[derive(uniffi::Record)]
+pub struct BitcoinMessageSignature {
+    pub address: String,
+    pub signature: Vec<u8>,
+}
+
+/// Sign an arbitrary message with the key at `address_n` (a full BIP32
+/// path), in the standard "Bitcoin Signed Message" format. The device
+/// shows the message + address and the user confirms on-device (the
+/// connection auto-ACKs the ButtonRequest). The script type is derived
+/// from the path's purpose so the signature binds to the matching
+/// legacy/nested/native address, exactly like Electrum.
+pub(crate) async fn sign_message(
+    conn: &mut Connection,
+    session_id: u8,
+    address_n: &[u32],
+    message: &[u8],
+    coin_type: u32,
+) -> Result<BitcoinMessageSignature, TrezorError> {
+    let (rt, rp) = conn
+        .transceive_on(
+            session_id,
+            BTC_SIGN_MESSAGE,
+            &SignMessage {
+                address_n: address_n.to_vec(),
+                message: message.to_vec(),
+                coin_name: Some(coin_name(coin_type).to_string()),
+                script_type: Some(script_type_for_path(address_n) as i32),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+        )
+        .await?;
+    if rt != BTC_MESSAGE_SIGNATURE {
+        return Err(TrezorError::thp(format!(
+            "expected MessageSignature ({BTC_MESSAGE_SIGNATURE}), got message type {rt}"
+        )));
+    }
+    let ms = MessageSignature::decode(rp.as_slice())
+        .map_err(|e| TrezorError::thp(format!("MessageSignature decode: {e}")))?;
+    Ok(BitcoinMessageSignature {
+        address: ms.address,
+        signature: ms.signature,
+    })
 }
 
 /// Account-level xpub (standard xpub/tpub prefix) at `address_n` for
