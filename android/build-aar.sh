@@ -95,6 +95,7 @@ mkdir -p "$KOTLIN_OUT_DIR"
     generate \
     --library "target/aarch64-linux-android/release/$LIB.so" \
     --language kotlin \
+    --no-format \
     --out-dir "$KOTLIN_OUT_DIR"
 
 echo "[android] assembling aar"
