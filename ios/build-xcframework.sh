@@ -35,6 +35,11 @@ fi
 echo "[ios] using cargo: $CARGO"
 echo "[ios] using rustc: ${RUSTC:-cargo-default}"
 
+# Pin the iOS min-version so rustc AND cc-rs (secp256k1 C) agree with the app's
+# deployment target; otherwise the static lib objects link with a "built for newer
+# iOS version" warning.
+export IPHONEOS_DEPLOYMENT_TARGET="26.0"
+
 echo "[ios] building arm64 device"
 "$CARGO" build --release -p "$CRATE" --target aarch64-apple-ios
 
