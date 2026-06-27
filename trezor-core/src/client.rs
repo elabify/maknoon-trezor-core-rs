@@ -525,7 +525,9 @@ impl TrezorClient {
                 return Err(e);
             }
         };
-        let r = chains::bitcoin::sign_message(conn, SEEDED_SESSION_ID, &address_n, &message, coin_type).await;
+        let r =
+            chains::bitcoin::sign_message(conn, SEEDED_SESSION_ID, &address_n, &message, coin_type)
+                .await;
         if r.is_err() {
             *guard = None;
         }
@@ -639,8 +641,8 @@ impl TrezorClient {
                 return Err(e);
             }
         };
-        let r =
-            chains::ethereum::sign_message_full(conn, SEEDED_SESSION_ID, &address_n, &message).await;
+        let r = chains::ethereum::sign_message_full(conn, SEEDED_SESSION_ID, &address_n, &message)
+            .await;
         if r.is_err() {
             *guard = None;
         }
@@ -751,8 +753,7 @@ impl TrezorClient {
                 return Err(e);
             }
         };
-        let r =
-            chains::solana::sign_message(conn, SEEDED_SESSION_ID, &address_n, &envelope).await;
+        let r = chains::solana::sign_message(conn, SEEDED_SESSION_ID, &address_n, &envelope).await;
         if r.is_err() {
             *guard = None;
         }
